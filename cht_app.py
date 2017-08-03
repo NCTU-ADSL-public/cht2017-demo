@@ -37,7 +37,7 @@ mapbox_access_token = 'pk.eyJ1IjoiYWlrb2Nob3UiLCJhIjoiY2o1bWF2emI4M2ZoYjJxbnFmbX
 layout = dict(
             showlegend = True,
             legend={'x': 0, 'y': 1},
-            height=500,
+            height=700,
             margin=Margin(l=0, r=0, t=0, b=0),
             autosize=True,
             hovermode='closest',
@@ -49,7 +49,7 @@ layout = dict(
                     lon=121.565418
                 ),
                 pitch=0,
-                zoom=12,
+                zoom=11,
                 style='streets'
             ),
         )
@@ -57,26 +57,23 @@ layout = dict(
 
 def initialize():
     #--/* raw mode */--
-    uid = "u_-35363411"
-    raw_df = pd.read_csv('data/'+uid+'_raw.csv', dtype={'lon': str, 'lat': str})
-    #--/* bus mode */--
-    '''bus_output [-35363411,1483429279,1483430152,TPE15112,1,9,26]'''
-    rid = 'TPE15112'
-    direction = '1'
-    s_idx = 9
-    e_idx = 26
-    trip_start_t = 1483429279
-    trip_end_t = 1483430152
-    df = pd.read_csv('data/bus_stop_infomation.csv', header=None,
+    #uid = "u_-35363411"
+    #raw_df = pd.read_csv('data/'+uid+'_raw.csv', dtype={'lon': str, 'lat': str})
+
+    bus_output = pd.read_csv('data/bus_output.csv', header=None,
+                    names=['uid','trip_start_t','trip_end_t','rid','direction','s_idx','e_idx'],
+                    dtype={'uid':str, 'rid':str, 'direction':str})
+    bus_output.index = bus_output['uid']
+    bus_output = bus_output.to_dict(orient='index')
+
+    route_df = pd.read_csv('data/bus_stop_infomation.csv', header=None,
                      names=['rid','route_name','direction','sid','stop_name','order','lon','lat'],
                      dtype=str)
-    route_df = df[(df.rid==rid)&(df.direction ==direction)]
-    route_df = route_df[(route_df.order.astype(int) >= s_idx)&(route_df.order.astype(int)<=e_idx)]
 
-    prepro_df = pd.read_csv('data/'+uid+'_prepro.csv', dtype=str)
-    user_ddf = prepro_df[(prepro_df.start_unix_t.astype(int) >= trip_start_t)&(prepro_df.end_unix_t.astype(int) <= trip_end_t)]
+    #prepro_df = pd.read_csv('data/'+uid+'_prepro.csv', dtype=str)
+    #user_ddf = prepro_df[(prepro_df.start_unix_t.astype(int) >= trip_start_t)&(prepro_df.end_unix_t.astype(int) <= trip_end_t)]
 
-    return raw_df, prepro_df, route_df, user_ddf
+    return bus_output, route_df
 
 app.layout = html.Div([
     html.Div([
@@ -101,11 +98,11 @@ app.layout = html.Div([
                 dcc.Dropdown(
                     id='my-dropdown',
                     options=[
-                        {'label': 'Aiko', 'value': 'u_-35363411'},
-                        {'label': 'Xiaochuan', 'value': 'u_-35363411'},
-                        {'label': 'Chris', 'value': 'u_-35363411'},
-                        {'label': 'Martin', 'value': 'u_-35363411'},
-                        {'label': 'Sasha', 'value': 'u_-35363411'}
+                        {'label': 'Charlie', 'value': 'u_-35363411'},
+                        {'label': 'Sally', 'value': 'u_-102396725'}, #MRT
+                        {'label': 'Patty', 'value': 'u_1673597718'}, #MRT
+                        {'label': 'Snoopy', 'value': 'u_1503609993'},
+                        {'label': 'Woodstock', 'value': 'u_-281531961'}, #MRT
                     ],
                     value="u_-35363411",
                     placeholder="Please choose an user",
@@ -152,16 +149,37 @@ app.layout = html.Div([
 
 
 def fetch_raw_dataframe(uid, date):
+    raw_df = pd.read_csv('data/'+uid+'_raw.csv', dtype={'lon': str, 'lat': str})
     return raw_df
 
 def fetch_prepro_dataframe(uid, date):
+    prepro_df = pd.read_csv('data/'+uid+'_prepro.csv', dtype=str)
     return prepro_df
 
 def fetch_mode_dataframe(uid, date):
-    return prepro_df, route_df, user_ddf
+    ## <debt> multiple routes
+    #--/* filter bus route */
+    rid = bus_output[uid[2:]]['rid']
+    direction = bus_output[uid[2:]]['direction']
+    s_index = bus_output[uid[2:]]['s_idx']
+    e_index = bus_output[uid[2:]]['e_idx']
+    route_ddf = route_df[(route_df.rid == rid)&(route_df.direction == direction)]
+    route_ddf = route_ddf[(route_ddf.order.astype(int) >= s_index)&(route_ddf.order.astype(int)<=e_index)]
+    #--/* filter user path */
+    trip_start_t = bus_output[uid[2:]]['trip_start_t']
+    trip_end_t = bus_output[uid[2:]]['trip_end_t']
+    prepro_df = pd.read_csv('data/'+uid+'_prepro.csv', dtype=str)
+    user_ddf = prepro_df[(prepro_df.start_unix_t.astype(int) >= trip_start_t)&(prepro_df.end_unix_t.astype(int) <= trip_end_t)]
+
+    return prepro_df, route_ddf, user_ddf
 
 def get_detection_modes(uid, date):
-    return ['Bus', 'Metro', 'HSR', 'Train']
+    ## <debt>
+    if uid in ['u_-35363411', 'u_1503609993']:
+        modes = ['Bus']
+    else:
+        modes = ['Bus', 'Metro']
+    return modes
 
 @app.callback(Output('multi-selector', 'options'),[
                 Input("my-dropdown", "value"), Input("my-slider", "value"),
@@ -188,8 +206,6 @@ def update_graph(uid, date, selectedData):
         total = df['pop'].sum()
         df['text'] = 'Occurrence ' + df['pop'].astype(str) + ' / ' + str(total)
         scale = 15
-        scale_2 = 8
-        zoom=12.2
         data = Data([
             Scattermapbox(
                 lat=df['lat'],
@@ -199,10 +215,19 @@ def update_graph(uid, date, selectedData):
                 marker=dict(
                         size=df['pop']*scale,
                         sizemode = 'area',
-                        color='orangered'
+                        #color='orangered'
+                        color=df['pop'],
+                        colorscale='Portland',
+                        colorbar=dict(
+                            thickness=15,
+                            title="Occurence<br>of points",
+                            x=0.935,
+                            xpad=0,
+                            nticks=10,
+                            ),
                     ),
-                hoverinfo = "lon+lat+text",
-                name = "Cellular Base Stations",
+                hoverinfo = "text",
+                name = "Cellular Points",
             ),
         ])
         layout['showlegend'] = True
@@ -212,7 +237,6 @@ def update_graph(uid, date, selectedData):
     elif selectedData == 'prepro':
         df = fetch_prepro_dataframe(uid, date)
         endpt_size=20
-        zoom=12.2
         scale=30
         data = Data([
             Scattermapbox(
@@ -223,12 +247,19 @@ def update_graph(uid, date, selectedData):
                 marker=Marker(
                     #color="royalblue",
                     color=np.log(df.stay_t.astype(int)),
-                    autocolorscale=True,
+                    colorscale='Portland',
                     #size=np.log(df.stay_t.astype(int))*scale,
                     #sizemode='area',
                     size=15,
+                    colorbar=dict(
+                        thickness=15,
+                        title="Logarithm of<br>stay time",
+                        x=0.935,
+                        xpad=0,
+                        nticks=10,
+                        ),
                 ),
-                hoverinfo = "lon+lat+text",
+                hoverinfo = "text",
                 name = "Cellular Trajectory"
             )
         ])
@@ -237,9 +268,8 @@ def update_graph(uid, date, selectedData):
         layout['mapbox']['center']['lat'] = np.mean([float(df.lat.loc[i]) for i in df.index])
 
     elif selectedData == 'mode':
-        user_df, route_df, user_ddf = fetch_mode_dataframe(uid, date)
+        user_df, route_ddf, user_ddf = fetch_mode_dataframe(uid, date)
         endpt_size=20
-        zoom=12.2
         data = Data([
             Scattermapbox(
                 lat=[user_df.lat.loc[i] for i in user_df.index],
@@ -254,12 +284,12 @@ def update_graph(uid, date, selectedData):
                 hoverinfo = "skip",
             ),
             Scattermapbox(
-                lat=[route_df.lat.loc[i] for i in route_df.index],
-                lon=[route_df.lon.loc[i] for i in route_df.index],
-                text=[route_df.route_name.loc[i]+'<br>'+route_df.order.loc[i]+'/'+route_df.stop_name.loc[i] for i in route_df.index],
+                lat=[route_ddf.lat.loc[i] for i in route_ddf.index],
+                lon=[route_ddf.lon.loc[i] for i in route_ddf.index],
+                text=[route_ddf.route_name.loc[i]+'<br>'+route_ddf.order.loc[i]+'/'+route_ddf.stop_name.loc[i] for i in route_ddf.index],
                 mode='markers+lines',
                 marker=Marker(
-                    size=[endpt_size] + [4 for j in range(len(route_df.index) - 2)] + [endpt_size],
+                    size=[endpt_size] + [4 for j in range(len(route_ddf.index) - 2)] + [endpt_size],
                     color="rgb(0,116,217)"
                 ),
                 name = "Bus Route",
@@ -275,7 +305,7 @@ def update_graph(uid, date, selectedData):
                     size=[endpt_size] + [4 for j in range(len(user_ddf.index) - 2)] + [endpt_size]
                 ),
                 name = "Detected Trajectory",
-                hoverinfo = "lon+lat+text",
+                hoverinfo = "text",
             )
         ])
         layout['showlegend'] = True
@@ -288,8 +318,8 @@ def update_graph(uid, date, selectedData):
 
 @app.server.before_first_request
 def defineTotalList():
-    global raw_df, prepro_df, route_df, user_ddf
-    raw_df, prepro_df, route_df, user_ddf = initialize()
+    global bus_output, route_df
+    bus_output, route_df = initialize()
 
 
 if __name__ == '__main__':
