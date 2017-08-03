@@ -59,13 +59,16 @@ def initialize():
     #--/* raw mode */--
     #uid = "u_-35363411"
     #raw_df = pd.read_csv('data/'+uid+'_raw.csv', dtype={'lon': str, 'lat': str})
-
-    bus_output = pd.read_csv('data/bus_output.csv', header=None,
+    uni_output = pd.read_csv('data/integrated_output.csv', header=None,
+                    names=['uid','date','mode','trip_start_t','trip_end_t'],
+                    dtype={'uid':str, 'date':str})
+    '''
+    bus_output = pd.read_csv('data/bus_20170104.csv', header=None,
                     names=['uid','trip_start_t','trip_end_t','rid','direction','s_idx','e_idx'],
                     dtype={'uid':str, 'rid':str, 'direction':str})
     bus_output.index = bus_output['uid']
     bus_output = bus_output.to_dict(orient='index')
-
+    '''
     route_df = pd.read_csv('data/bus_stop_infomation.csv', header=None,
                      names=['rid','route_name','direction','sid','stop_name','order','lon','lat'],
                      dtype=str)
@@ -73,7 +76,7 @@ def initialize():
     #prepro_df = pd.read_csv('data/'+uid+'_prepro.csv', dtype=str)
     #user_ddf = prepro_df[(prepro_df.start_unix_t.astype(int) >= trip_start_t)&(prepro_df.end_unix_t.astype(int) <= trip_end_t)]
 
-    return bus_output, route_df
+    return uni_output, route_df
 
 app.layout = html.Div([
     html.Div([
@@ -127,6 +130,16 @@ app.layout = html.Div([
                         multi=True,
                         placeholder="This selector only showes when you choose mode detection.",
                 ),
+                html.Div([
+                    dcc.Checklist(
+                        id='lock-selector',
+                        options=[
+                            {'label': 'Lock camera', 'value': 'lock'}
+                        ],
+                        values=[],
+                        inputStyle={"z-index": "3"}
+                    ),
+                ],style={'margin-top': '10', 'margin-left': '7'})
             ], className='six columns'),
         ], className='row'),
         html.Div([
@@ -149,16 +162,25 @@ app.layout = html.Div([
 
 
 def fetch_raw_dataframe(uid, date):
-    raw_df = pd.read_csv('data/'+uid+'_raw.csv', dtype={'lon': str, 'lat': str})
+    date = '201701'+'{:02d}'.format(date)
+    raw_df = pd.read_csv('data/'+date+'/'+uid+'_raw.csv', dtype={'lon': str, 'lat': str})
     return raw_df
 
 def fetch_prepro_dataframe(uid, date):
-    prepro_df = pd.read_csv('data/'+uid+'_prepro.csv', dtype=str)
+    date = '201701'+'{:02d}'.format(date)
+    prepro_df = pd.read_csv('data/'+date+'/'+uid+'_prepro.csv', dtype=str)
     return prepro_df
 
 def fetch_mode_dataframe(uid, date):
     ## <debt> multiple routes
     #--/* filter bus route */
+    date = '201701'+'{:02d}'.format(date)
+    bus_output = pd.read_csv('data/bus_'+date+'.csv', header=None,
+                    names=['uid','trip_start_t','trip_end_t','rid','direction','s_idx','e_idx'],
+                    dtype={'uid':str, 'rid':str, 'direction':str})
+    bus_output.index = bus_output['uid']
+    bus_output = bus_output.to_dict(orient='index')
+
     rid = bus_output[uid[2:]]['rid']
     direction = bus_output[uid[2:]]['direction']
     s_index = bus_output[uid[2:]]['s_idx']
@@ -168,18 +190,14 @@ def fetch_mode_dataframe(uid, date):
     #--/* filter user path */
     trip_start_t = bus_output[uid[2:]]['trip_start_t']
     trip_end_t = bus_output[uid[2:]]['trip_end_t']
-    prepro_df = pd.read_csv('data/'+uid+'_prepro.csv', dtype=str)
+    prepro_df = pd.read_csv('data/'+date+'/'+uid+'_prepro.csv', dtype=str)
     user_ddf = prepro_df[(prepro_df.start_unix_t.astype(int) >= trip_start_t)&(prepro_df.end_unix_t.astype(int) <= trip_end_t)]
 
     return prepro_df, route_ddf, user_ddf
 
 def get_detection_modes(uid, date):
-    ## <debt>
-    if uid in ['u_-35363411', 'u_1503609993']:
-        modes = ['Bus']
-    else:
-        modes = ['Bus', 'Metro']
-    return modes
+    date = '201701'+'{:02d}'.format(date)
+    return uni_output[(uni_output['uid'] == uid[2:])&(uni_output['date'] == date)]['mode'].unique()
 
 @app.callback(Output('multi-selector', 'options'),[
                 Input("my-dropdown", "value"), Input("my-slider", "value"),
@@ -198,8 +216,10 @@ def set_selector_value(available_options):
 
 @app.callback(Output("map-graph", "figure"),[
                 Input("my-dropdown", "value"), Input("my-slider", "value"),
-                Input("my-selector", "value")])
-def update_graph(uid, date, selectedData):
+                Input("my-selector", "value")],[
+                State('lock-selector', 'values'),
+                State('map-graph', 'relayoutData')])
+def update_graph(uid, date, selectedData, lockSelector, prevLayout):
 
     if selectedData == 'raw':
         df = fetch_raw_dataframe(uid, date)
@@ -230,7 +250,6 @@ def update_graph(uid, date, selectedData):
                 name = "Cellular Points",
             ),
         ])
-        layout['showlegend'] = True
         layout['mapbox']['center']['lon'] = df['lon'].astype(float).mean()
         layout['mapbox']['center']['lat'] = df['lat'].astype(float).mean()
 
@@ -263,7 +282,6 @@ def update_graph(uid, date, selectedData):
                 name = "Cellular Trajectory"
             )
         ])
-        layout['showlegend'] = True
         layout['mapbox']['center']['lon'] = np.mean([float(df.lon.loc[i]) for i in df.index])
         layout['mapbox']['center']['lat'] = np.mean([float(df.lat.loc[i]) for i in df.index])
 
@@ -308,9 +326,14 @@ def update_graph(uid, date, selectedData):
                 hoverinfo = "text",
             )
         ])
-        layout['showlegend'] = True
         layout['mapbox']['center']['lon'] = np.mean([float(user_df.lon.loc[i]) for i in user_df.index])
         layout['mapbox']['center']['lat'] = np.mean([float(user_df.lat.loc[i]) for i in user_df.index])
+
+    if (prevLayout is not None and lockSelector is not None and 
+        'lock' in lockSelector):
+        layout['mapbox']['center']['lon'] = float(prevLayout['mapbox']['center']['lon'])
+        layout['mapbox']['center']['lat'] = float(prevLayout['mapbox']['center']['lat'])
+        layout['mapbox']['zoom'] = float(prevLayout['mapbox']['zoom'])
 
     fig = dict(data=data, layout=layout)
     return fig
@@ -318,8 +341,8 @@ def update_graph(uid, date, selectedData):
 
 @app.server.before_first_request
 def defineTotalList():
-    global bus_output, route_df
-    bus_output, route_df = initialize()
+    global uni_output, route_df
+    uni_output, route_df = initialize()
 
 
 if __name__ == '__main__':
