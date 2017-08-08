@@ -26,10 +26,21 @@ external_css = ["https://cdnjs.cloudflare.com/ajax/libs/skeleton/2.0.4/skeleton.
                 "//fonts.googleapis.com/css?family=Raleway:400,300,600",
                 "//fonts.googleapis.com/css?family=Dosis:Medium",
                 "https://cdn.rawgit.com/plotly/dash-app-stylesheets/62f0eb4f1fadbefea64b2404493079bf848974e8/dash-uber-ride-demo.css",
-                "https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"]
+                "https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css",
+                "https://cdnjs.cloudflare.com/ajax/libs/normalize/7.0.0/normalize.min.css",
+                ]
+#"https://cdn.rawgit.com/plotly/dash-app-stylesheets/5047eb29e4afe01b45b27b1d2f7deda2a942311a/goldman-sachs-report.css"
 
 for css in external_css:
     app.css.append_css({"external_url": css})
+
+
+external_js = [ "https://code.jquery.com/jquery-3.2.1.min.js",
+        "https://cdn.rawgit.com/plotly/dash-app-stylesheets/a3401de132a6d0b652ba11548736b1d1e80aa10d/dash-goldman-sachs-report-js.js" ]
+
+for js in external_js:
+    app.scripts.append_script({ "external_url": js })
+
 
 mapbox_access_token = 'pk.eyJ1IjoiYWlrb2Nob3UiLCJhIjoiY2o1bWF2emI4M2ZoYjJxbnFmbXFrdHQ0ZCJ9.w0_1-IC0JCPukFL7Bpa92w'
 
@@ -54,6 +65,17 @@ layout = dict(
             ),
         )
 
+# Demo page notice: available_demo_data
+available_demo_data = pd.read_csv('data/available_demo_data.csv')
+def generate_table(df):
+    return html.Table(
+        # Header
+        [html.Tr([html.Th(col) for col in df.columns])] +
+        # Body
+        [html.Tr([
+            html.Td(df.iloc[i][col]) for col in df.columns
+        ]) for i in range(len(df))]
+    )
 
 def initialize():
     #--/* raw mode */--
@@ -82,7 +104,7 @@ app.layout = html.Div([
     html.Div([
         html.Div([
             html.H2("Transportation Mode Detection App",
-                style={'font-family': 'Dosis', 'float': 'left', 'position': 'relative', 'top': '30px', 'left': '10px'}),
+                style={'font-family': 'Dosis', 'float': 'left', 'position': 'relative', 'top': '30px'}),
             html.Img(src="https://s3-us-west-1.amazonaws.com/plotly-tutorials/logo/new-branding/dash-logo-by-plotly-stripe.png",
                 style={
                     'height': '100px',
@@ -94,10 +116,18 @@ app.layout = html.Div([
             html.P("Public transportation mode detection with cellular data.\
                     Select different users and days using the dropdown and the slider\
                     below", className="explanationParagraph twelve columns",
-                style={'float': 'left', 'position': 'relative', 'left': '15px'}),
+                style={'float': 'left', 'position': 'relative', 'fontSize': 20}),
         ], className='row'),
         html.Div([
+            html.H5("This is a test page, so you may receive no action when you click certain options.\
+                Available data is listed below:", style={'marginBottom': 1}),
+            #dcc.Markdown("``````"),
+            html.Table( generate_table(available_demo_data), style={'marginBottom': 1}),
+            ], className='explanationParagraph twelve columns', 
+            style={'backgroundColor': 'mintcream', 'color': 'maroon', 'fontSize': 15,'float': 'left', 'position': 'relative'}),
+        html.Div([
             html.Div([
+                html.P('Choose an user:', style={'fontSize': 17, 'marginBottom': 1}),
                 dcc.Dropdown(
                     id='my-dropdown',
                     options=[
@@ -122,9 +152,10 @@ app.layout = html.Div([
                         value='raw',
                         labelStyle={'display': 'inline-block'}
                     ),
-                ],style={'margin-top': '10', 'margin-left': '7'})
+                ],style={'marginTop': '10', 'marginLeft': '7'})
             ],className='six columns'),
             html.Div([
+                html.P('Select one or more mode(s):', style={'fontSize': 17, 'marginBottom': 1}),
                 dcc.Dropdown(
                         id='multi-selector',
                         multi=True,
@@ -139,7 +170,7 @@ app.layout = html.Div([
                         values=[],
                         inputStyle={"z-index": "3"}
                     ),
-                ],style={'margin-top': '10', 'margin-left': '7'})
+                ],style={'marginTop': '10', 'marginLeft': '7'})
             ], className='six columns'),
         ], className='row'),
         html.Div([
@@ -346,4 +377,5 @@ def defineTotalList():
 
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    #app.run_server(debug=True) #localhost
+    app.run_server(host='0.0.0.0', port=8050, debug=False)
