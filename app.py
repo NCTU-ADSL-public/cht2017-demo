@@ -26,25 +26,110 @@ layout = dict(
             showlegend = True,
             legend={'x': 0, 'y': 1},
             height=500,
-            margin=Margin(l=0, r=0, t=0, b=0),
+            margin=Margin(l=0, r=0, t=0, b=30),
             autosize=True,
             hovermode='closest',
             mapbox=dict(
                 accesstoken=mapbox_access_token,
                 bearing=0,
                 center=dict(
-                    lat=25.032969,
-                    lon=121.565418
+                    lat=24.709089,
+                    lon=121.377034,
                 ),
                 pitch=0,
                 zoom=8,
                 style='streets'
             ),
+            font=dict(
+                family='Raleway',
+            ),
         )
+
+layout_individual_graph = go.Layout(
+    title="Individual Time Distribution",
+    titlefont=dict(
+        family='Dosis',
+        ),
+    autosize=True,
+    height=500,
+    margin=Margin(l=30, r=20, t=30, b=45),
+    plot_bgcolor="#D9E0EC",
+    xaxis=dict(
+        range=[-0.5, 23.5],
+        showline=True,
+        showticklabels=True,
+        linewidth=2,
+        ticks='outside',
+        tickmode='array',
+        tickvals=[0,4,8,12,16,20],
+        tickwidth=2,
+        ticklen=5,
+        tickfont=dict(
+            family='Raleway',
+            size=12,
+            color='rgb(82, 82, 82)',
+        ),
+        ticksuffix=":00",
+        zeroline=False,
+        gridcolor="white",
+    ),
+    yaxis=dict(
+        #range=[0, max(yVal)*1.5],
+        showline=True,
+        showticklabels=True,
+        linewidth=2,
+        ticks='outside',
+        tickwidth=2,
+        ticklen=5,
+        tickfont=dict(
+            family='Raleway',
+            size=12,
+            color='rgb(82, 82, 82)',
+        ),
+        zeroline=False,
+        gridcolor="white",
+    ),
+
+)
+
+layout_histogram = go.Layout(
+    bargap=0.1,
+    bargroupgap=0,
+    barmode='group',
+    margin=Margin(l=10, r=00, t=0, b=30),
+    showlegend=False,
+    plot_bgcolor="#D9E0EC",
+    #plot_bgcolor='#323130',
+    #paper_bgcolor='rgb(66, 134, 244, 0)',
+    height=250,
+    dragmode="select",
+    xaxis=dict(
+        range=[-0.5, 23.5],
+        tickfont=dict(
+            family='Raleway',
+            #size=12,
+            #color='rgb(82, 82, 82)',
+        ),
+        showgrid=True,
+        #gridcolor="white",
+        nticks=25,
+        fixedrange=True,
+        ticksuffix=":00"
+    ),
+    yaxis=dict(
+        #range=[0, max(yVal)+max(yVal)/4],
+        showticklabels=False,
+        showgrid=False,
+        fixedrange=True,
+        rangemode='nonnegative',
+        zeroline='hidden'
+    ),
+)
+
 
 
 app.layout = html.Div([
-    html.A(['Home'], className="button", href="#", style=dict(position="absolute", top=-2, right=130)),
+    html.A(['Home'], className="button", href="#", style=dict(position="relative", top=-2, left='82%')),
     html.Br([]),
     html.Br([]),
     html.Br([]),
@@ -168,8 +253,10 @@ app.layout = html.Div([
                              using the dropdown menu",
                 className="bars"
             ),
-            dcc.Graph(id="histogram"),
-            html.P("", id="popupAnnotation", className="popupAnnotation", style={'color': 'white'}),
+            html.Div([
+                dcc.Graph(id="histogram"),
+            ], style={'margin-top': 10}),
+            html.P("", id="popupAnnotation", className="popupAnnotation", style={'color': 'black', 'fontSize': 15, 'font-family': 'Dosis'}),
         ], className="graph twelve coluns"),
         # Foot
         html.Br([]),
@@ -247,16 +334,23 @@ def get_selection(uid, date, option, selection):
     xVal = []
     yVal = []
     xSelected = []
-    colorVal = ["#F4EC15", "#DAF017", "#BBEC19", "#9DE81B", "#80E41D", "#66E01F",
+    colorVal2 = ["#F4EC15", "#DAF017", "#BBEC19", "#9DE81B", "#80E41D", "#66E01F",
                 "#4CDC20", "#34D822", "#24D249", "#25D042", "#26CC58", "#28C86D",
                 "#29C481", "#2AC093", "#2BBCA4", "#2BB5B8", "#2C99B4", "#2D7EB0",
                 "#2D65AC", "#2E4EA4", "#2E38A4", "#3B2FA0", "#4E2F9C", "#603099"]
+
+    colorVal = ['#fae4b2','#f9ddb2','#f9d6b1','#f7d0b1','#f6c9b0','#f4c2b0',
+                '#f2bcb0','#efb6af','#ecaeaf','#e9a9af','#e5a3ae','#e09eae',
+                '#db98ae','#d693ae','#cf8eae','#c989ae','#c285ae','#ba81ae',
+                '#b37dae','#ab79af','#a375af','#9971af','#906eb0','#866bb0']
+
     if (selection is not None):
         for x in selection:
             xSelected.append(int(x))
     for i in range(0, 24):
         if i in xSelected and len(xSelected) < 24:
-            colorVal[i] = ('#FFFFFF')
+            colorVal[i] = ('lightslategray')
+            #colorVal[i] = ('#FFFFFF')
         xVal.append(i)
         if option == 'r':
             yVal.append(sum(cellular[uid][date].index.hour == i))
@@ -271,67 +365,47 @@ def get_selection(uid, date, option, selection):
                Input("time-selector", "value")])
 def update_histogram(uid, date, option, selection):
     [xVal, yVal, xSelected, colorVal] = get_selection(uid, date, option, selection)
-    layout = go.Layout(
-        bargap=0.01,
-        bargroupgap=0,
-        barmode='group',
-        margin=Margin(l=10, r=0, t=0, b=30),
-        showlegend=False,
-        plot_bgcolor='#323130',
-        paper_bgcolor='rgb(66, 134, 244, 0)',
-        height=250,
-        dragmode="select",
-        xaxis=dict(
-            range=[-0.5, 23.5],
-            showgrid=False,
-            nticks=25,
-            fixedrange=True,
-            ticksuffix=":00"
-        ),
-        yaxis=dict(
-            range=[0, max(yVal)+max(yVal)/4],
-            showticklabels=False,
-            showgrid=False,
-            fixedrange=True,
-            rangemode='nonnegative',
-            zeroline='hidden'
-        ),
-        annotations=[
-            dict(x=xi, y=yi,
-                 text=str(yi),
-                 xanchor='center',
-                 yanchor='bottom',
-                 showarrow=False,
-                 font=dict(
-                    color='white'
-                 ),
-                 ) for xi, yi in zip(xVal, yVal)],
-    )
-
-    return go.Figure(
-           data=Data([
-                go.Bar(
-                    x=xVal,
-                    y=yVal,
-                    marker=dict(
-                        color=colorVal
-                    ),
-                    hoverinfo="x"
+    data=Data([
+            go.Bar(
+                x=xVal,
+                y=yVal,
+                marker=dict(
+                    color=colorVal
                 ),
-                go.Scatter(
-                    opacity=0,
-                    x=xVal,
-                    y=yVal/2,
-                    hoverinfo="none",
-                    mode='markers',
-                    marker=Marker(
-                        color='rgb(66, 134, 244, 0)',
-                        symbol="square",
-                        size=40
-                    ),
-                    visible=True
-                )
-            ]), layout=layout)
+                hoverinfo="x"
+            ),
+            go.Scatter(
+                opacity=0,
+                x=xVal,
+                y=yVal/2,
+                hoverinfo="none",
+                mode='markers',
+                marker=Marker(
+                    #color='rgb(66, 134, 244, 0)',
+
+                    symbol="square",
+                    size=40
+                ),
+                visible=True
+            )
+    ])
+
+    layout_histogram['yaxis']['range'] = [0, max(yVal)+max(yVal)/4]
+    layout_histogram['annotations'] = [dict(x=xi, y=yi,
+                                             text=str(yi),
+                                             xanchor='center',
+                                             yanchor='bottom',
+                                             showarrow=False,
+                                             font=dict(
+                                                family="Raleway",
+                                                #color="white"
+                                             ),
+                                        ) for xi, yi in zip(xVal, yVal)]
+
+
+    figure = go.Figure(data=data, layout=layout_histogram)
+
+    return figure
 
 
 def get_lon_lat(uid, date, option, selectedData):
@@ -366,24 +440,24 @@ def update_main_graph(uid, date, option, selectedData, prevLayout, lockControls)
     df = eval(listStr)
     if option == 'r':
         occurence = np.array([len(p[1]) for p in df.groupby(df.Location)])
-        total = sum(occurence)
-        text = ['Occurrence ' + str(j) + ' / ' + str(total) for j in occurence]
+        total_occurence = sum(occurence)
+        text = [str(j) + ' / ' + str(total_occurence) for j in occurence]
         data = Data([
             Scattermapbox(
                 lon=[p[0].split(',')[0] for p in df.groupby(df.Location)],
                 lat=[p[0].split(',')[1] for p in df.groupby(df.Location)],
                 text=text,
-                #customdata=[p[1].index.hour for p in cellular[uid][date].groupby(cellular[uid][date].Location)],
                 customdata=[p[1].index.hour for p in df.groupby(df.Location)],
                 mode='markers',
                 marker=dict(
-                    size=occurence*15,
+                    size=occurence*8,
                     sizemode='area',
+                    opacity=0.7,
                     color=occurence,
                     colorscale='Picnic',
                     colorbar=dict(
-                        thickness=15,
-                        title="Occurence<br>of points",
+                        thickness=6,
+                        title="Occurence",
                         x=0.935,
                         xpad=0,
                         nticks=10,
@@ -403,14 +477,14 @@ def update_main_graph(uid, date, option, selectedData, prevLayout, lockControls)
     fig = dict(data=data, layout=layout)
     return fig
 
-def fetch_individual(api):
-    print(api)
+
+
+def fetch_individual(chosen):
     xVal = []
     yVal = []
     for i in range(0, 24):
         xVal.append(i)
-        yVal.append(sum([int(j) == i for j in api]))
-
+        yVal.append(sum([int(j) == i for j in chosen]))
     return [np.array(xVal), np.array(yVal)]
 
 
@@ -419,49 +493,27 @@ def fetch_individual(api):
               [Input('main-graph', 'hoverData')])
 def update_individual_graph(hoverData):
     if hoverData is None:
-        pass
+        hoverData = {'points': [{'customdata': []}]}
     chosen = [point['customdata'] for point in hoverData['points']]
     [xVal, yVal] = fetch_individual(chosen[0])
 
-    layout = go.Layout(
-        autosize=True,
-        height=500,
-        margin=Margin(l=15, r=5, t=30, b=45),
-        #showlegend=False,
-        xaxis=dict(
-            range=[-0.5, 23.5],
-            showgrid=False,
-            nticks=25,
-            fixedrange=True,
-            ticksuffix=":00"
-        ),
-        yaxis=dict(
-            range=[0, max(yVal)+max(yVal)/4],
-            showticklabels=True,
-            showgrid=False,
-            fixedrange=True,
-            rangemode='nonnegative',
-            zeroline='hidden'
-        ),
+    data = Data([
+         go.Scatter(
+             x=xVal,
+             y=yVal,
+             mode='lines+markers',
+             line=dict(
+                 shape="spline",
+                 smoothing=2,
+                 width=3,
+                 color='rgb(205, 12, 24)'
+             ),
+         ),
+     ])
+    layout_individual_graph['yaxis']['range'] = [0, max(yVal)*1.5]
 
-    )
-
-    return go.Figure(
-           data=Data([
-                go.Scatter(
-                    x=xVal,
-                    y=yVal,
-                    mode='lines+markers',
-                    #hoverinfo="x",
-                    line=dict(
-                        shape="spline",
-                        smoothing=2,
-                        width=1,
-                        color='#FF0000'
-                    ),
-                    marker=dict(symbol='diamond-open'),
-                ),
-            ]), layout=layout)
+    figure = go.Figure(data=data, layout=layout_individual_graph)
+    return figure
 
 
 
