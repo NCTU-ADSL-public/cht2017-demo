@@ -437,8 +437,8 @@ def get_lon_lat(uid, date, option, selectedData):
     if(selectedData is None or len(selectedData) is 0):
         return listStr
     elif(int(selectedData[len(selectedData)-1])-int(selectedData[0])+2 == len(selectedData)+1 and len(selectedData) > 2):
-        listStr += "[(cellular[uid][date].index.hour>"+str(int(selectedData[0]))+") & \
-                    (cellular[uid][date].index.hour<" + str(int(selectedData[len(selectedData)-1]))+")]"
+        listStr += "[(cellular[uid][date].index.hour>="+str(int(selectedData[0]))+") & \
+                    (cellular[uid][date].index.hour<=" + str(int(selectedData[len(selectedData)-1]))+")]"
     else:
         listStr += "["
         for point in selectedData:
