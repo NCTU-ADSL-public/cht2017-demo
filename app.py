@@ -129,7 +129,7 @@ layout_histogram = go.Layout(
 
 
 app.layout = html.Div([
-    html.A(['Home'], className="button", href="#", style=dict(position="relative", top=-2, left='82%')),
+    html.A(['Home'], className="button", href="#", style=dict(position="relative", top=-2, left='75%')),
     html.Br([]),
     html.Br([]),
     html.Br([]),
@@ -137,7 +137,7 @@ app.layout = html.Div([
         # Row 1: Header and Intro text
         html.Div([
             html.Div([
-                html.H5('Transportation Mode Detection'),
+                html.H4('Transportation Mode Detection'),
                 html.H6('Public transportation mode detection with cellular data. Select different users and days using the dropdowns below', style=dict(color='#7F90AC')),
                 ], className = "nine columns padded"),
             html.Div([
@@ -157,8 +157,8 @@ app.layout = html.Div([
                         id='user-dropdown',
                         options=[
                             {'label': 'WC Peng :)', 'value': 'u_466924201064380'},
-                            {'label': 'Piske :)', 'value': 'u_-35363411'},
-                            {'label': 'Usagi :)', 'value': 'u_-102396725'}, #MRT
+                            {'label': 'u_-35363411', 'value': 'u_-35363411'},
+                            {'label': 'u_-102396725', 'value': 'u_-102396725'}, #MRT
                         ],
                         value="u_466924201064380",
                         placeholder="Choose an user",
@@ -170,10 +170,6 @@ app.layout = html.Div([
                     html.Label('Select day:'),
                     dcc.Dropdown(
                         id='date-dropdown',
-                        options=[
-                            {'label': '2016-11-23', 'value': '20161123'},
-                        ],
-                        value="20161123",
                         placeholder="Choose a day",
                     ),
                 ], style={'position': 'relative', 'left': 30}),
@@ -188,8 +184,8 @@ app.layout = html.Div([
                         id='option-selector',
                         options=[
                             {'label': 'Cellular Raw Data ', 'value': 'r'},
-                            {'label': 'Preprocessed Trajectory ', 'value': 'p'},
-                            {'label': 'Mode Detection ', 'value': 'm'},
+                            {'label': 'Preprocessed Trajectory ', 'value': 'p'}, #<>
+                            {'label': 'Mode Detection ', 'value': 'm'}, #<>
                         ],
                         value='r',
                         labelStyle={'display': 'inline-block'},
@@ -212,10 +208,10 @@ app.layout = html.Div([
         html.Div([
             html.Div([
                 dcc.Graph(id='main-graph')
-            ], className='eight columns', style={'margin-top': 20}),
+            ], className='eight columns', style={'margin-top': 0}),
             html.Div([
                 dcc.Graph(id='individual-graph')
-            ], className='four columns', style={'margin-top': 20}),
+            ], className='four columns', style={'margin-top': 0}),
         ], className='row'),
         # Row 5:
         html.Div([
@@ -293,13 +289,42 @@ def initialize():
 
 # Create callbacks
 
-'''
+
 # user-dropdown -> date-dropdown
 @app.callback(Output("date-dropdown", "options"),
               [Input("user-dropdown", "value")])
 def set_date_options(uid):
-    pass
-'''
+    if uid == 'u_466924201064380':
+        options=[
+            {'label': '2016-10-21', 'value': '20161021'},
+            {'label': '2016-11-23', 'value': '20161123'},
+            {'label': '2016-12-20', 'value': '20161220'},
+            {'label': '2017-01-16', 'value': '20170116'},
+            {'label': '2017-02-13', 'value': '20170213'},
+            {'label': '2017-02-17', 'value': '20170217'},
+            {'label': '2017-02-22', 'value': '20170222'},
+            {'label': '2017-03-03', 'value': '20170303'},
+            {'label': '2017-03-17', 'value': '20170317'},
+            {'label': '2017-05-12', 'value': '20170512'},
+        ]
+    else:
+        options=[
+            {'label': '2017-01-03', 'value': '20170103'},
+            {'label': '2017-01-04', 'value': '20170104'},
+            {'label': '2017-01-05', 'value': '20170105'},
+            {'label': '2017-01-06', 'value': '20170106'},
+        ]
+    return options
+
+@app.callback(Output("date-dropdown", "value"),
+              [Input("user-dropdown", "value")])
+def set_date_value(uid):
+    if uid == 'u_466924201064380':
+        value = '20161123'
+    else:
+        value = '20170103'
+    return value
+
 # histogram -> time-selector
 @app.callback(Output("time-selector", "value"),
               [Input("histogram", "selectedData")])
@@ -382,7 +407,6 @@ def update_histogram(uid, date, option, selection):
                 mode='markers',
                 marker=Marker(
                     #color='rgb(66, 134, 244, 0)',
-
                     symbol="square",
                     size=40
                 ),
@@ -446,27 +470,44 @@ def update_main_graph(uid, date, option, selectedData, prevLayout, lockControls)
             Scattermapbox(
                 lon=[p[0].split(',')[0] for p in df.groupby(df.Location)],
                 lat=[p[0].split(',')[1] for p in df.groupby(df.Location)],
+                mode='markers',
+                marker=dict(
+                    #size=np.log2(occurence)*220,
+                    size=occurence*21,
+                    sizemode='area',
+                    opacity=0.3,
+                    color='black',
+                ),
+                hoverinfo='skip',
+            ),
+            Scattermapbox(
+                lon=[p[0].split(',')[0] for p in df.groupby(df.Location)],
+                lat=[p[0].split(',')[1] for p in df.groupby(df.Location)],
                 text=text,
                 customdata=[p[1].index.hour for p in df.groupby(df.Location)],
                 mode='markers',
                 marker=dict(
-                    size=occurence*8,
+                    #size=np.log2(occurence)*200,
+                    size=occurence*20,
                     sizemode='area',
-                    opacity=0.7,
-                    color=occurence,
-                    colorscale='Picnic',
-                    colorbar=dict(
-                        thickness=6,
-                        title="Occurence",
-                        x=0.935,
-                        xpad=0,
-                        nticks=10,
-                        ),
+                    opacity=0.8,
+                    #color=occurence,
+                    color='tomato',
+                    #colorscale=[[0, 'aquamarine'],[0.3, '#7AC4C2'],[0.7, '#F1A1AD'],[1, 'tomato']],
+                    #reversescale=True,
+                    #colorbar=dict(
+                    #    thickness=6,
+                    #    title="Occurence",
+                    #    x=0.935,
+                    #    xpad=0,
+                    #    nticks=10,
+                    #    ),
                 ),
-                #hoverinfo="text",
-                name="Cellular Raw Data"
+                hoverinfo="lon+lat+text",
+                #name="Cellular Raw Data"
             ),
         ])
+        layout['showlegend'] = False
 
     if (prevLayout is not None and lockControls is not None and
         'lock' in lockControls):
