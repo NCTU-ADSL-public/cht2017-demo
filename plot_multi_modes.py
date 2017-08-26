@@ -23,7 +23,7 @@ def plot_multi_modes(uid, d_idx):
         trip_end_t = result.iloc[i]['end_t']
         #filename = uid+'_'+file_list[d_idx]+'_prepro.csv'
         filename = file_list[d_idx]+'.csv'
-        cellular_df = pd.read_csv(os.path.join('data', uid, 'cellular', filename), dtype=str)
+        cellular_df = pd.read_csv(os.path.join('data', uid, filename), dtype=str)
         #trip_df = cellular_df[(cellular_df.ctime_unix.astype(int) >= trip_start_t)&(cellular_df.ctime_unix.astype(int) <= trip_end_t)]
         cellular_df.ctimestamp = pd.to_datetime(cellular_df.ctimestamp)
         trip_df = cellular_df[(cellular_df.ctimestamp >= pd.to_datetime(trip_start_t))&(cellular_df.ctimestamp <= pd.to_datetime(trip_end_t))]
