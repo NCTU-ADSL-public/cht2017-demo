@@ -27,7 +27,7 @@ layout = dict(
             showlegend = True,
             legend={'x': 0, 'y': 1},
             height=500,
-            margin=Margin(l=10, r=0, t=0, b=10),
+            margin=Margin(l=10, r=0, t=0, b=20),
             autosize=True,
             hovermode='closest',
             mapbox=dict(
@@ -53,7 +53,7 @@ layout_individual_graph = go.Layout(
         ),
     autosize=True,
     height=500,
-    margin=Margin(l=50, r=15, t=30, b=30),
+    margin=Margin(l=50, r=15, t=30, b=45),
     plot_bgcolor="#D9E0EC",
     xaxis=dict(
         range=[-0.5, 23.5],
@@ -200,10 +200,10 @@ app.layout = html.Div([
         html.Div([
             html.Div([
                 dcc.Graph(id='main-graph')
-            ], className='eight columns', style={'margin-top': 0}),
+            ], className='eight columns', style={'margin': 'auto'}),
             html.Div([
                 dcc.Graph(id='individual-graph')
-            ], className='four columns', style={'margin-top': 0}),
+            ], className='four columns', style={'margin': 'auto'}),
         ], className='row'),
         # Row 5:
         html.Div([
@@ -253,7 +253,7 @@ app.layout = html.Div([
 
         dcc.Markdown("[NCTU-ADSL/cht2017-demo](https://github.com/NCTU-ADSL-public/cht2017-demo)"),
 
-    ], className='container'),
+    ], className='container', style={'width': '90%', 'margin': 'auto'}),
     html.Br([]),
 ])
 
@@ -648,6 +648,7 @@ if 'DYNO' in os.environ:
 external_css = ["https://cdnjs.cloudflare.com/ajax/libs/skeleton/2.0.4/skeleton.min.css",
                 "//fonts.googleapis.com/css?family=Raleway:400,300,600",
                 "//fonts.googleapis.com/css?family=Dosis:Medium",
+                #"https://cdn.rawgit.com/AikoChou/cht2017-demo/ver2/static/css/hush.css",
                 "https://cdn.rawgit.com/plotly/dash-app-stylesheets/0e463810ed36927caf20372b6411690692f94819/dash-drug-discovery-demo-stylesheet.css",
                  "https://cdn.rawgit.com/plotly/dash-app-stylesheets/5047eb29e4afe01b45b27b1d2f7deda2a942311a/goldman-sachs-report.css",
                  "https://cdn.rawgit.com/plotly/dash-app-stylesheets/62f0eb4f1fadbefea64b2404493079bf848974e8/dash-uber-ride-demo.css",
@@ -663,4 +664,5 @@ def loadData():
     cellular_dfs, prepro_dfs, result_dfs = initialize()
 
 if __name__ == '__main__':
-    app.run_server(debug=True) #localhost
+    #app.run_server(debug=True) #localhost
+    app.run_server(host='0.0.0.0', port=8050, debug=False)
