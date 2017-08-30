@@ -11,6 +11,7 @@ import json
 import numpy as np
 import pandas as pd
 import os
+import math
 from flask import Flask
 server = Flask('my app')
 server.secret_key = os.environ.get('secret_key', 'secret')
@@ -26,7 +27,7 @@ layout = dict(
             showlegend = True,
             legend={'x': 0, 'y': 1},
             height=500,
-            margin=Margin(l=0, r=0, t=0, b=30),
+            margin=Margin(l=10, r=0, t=0, b=10),
             autosize=True,
             hovermode='closest',
             mapbox=dict(
@@ -52,7 +53,7 @@ layout_individual_graph = go.Layout(
         ),
     autosize=True,
     height=500,
-    margin=Margin(l=30, r=20, t=30, b=45),
+    margin=Margin(l=50, r=15, t=30, b=30),
     plot_bgcolor="#D9E0EC",
     xaxis=dict(
         range=[-0.5, 23.5],
@@ -66,15 +67,15 @@ layout_individual_graph = go.Layout(
         ticklen=5,
         tickfont=dict(
             family='Raleway',
-            size=12,
-            color='rgb(82, 82, 82)',
         ),
         ticksuffix=":00",
         zeroline=False,
         gridcolor="white",
     ),
     yaxis=dict(
-        #range=[0, max(yVal)*1.5],
+        titlefont=dict(
+            family='Raleway',
+        ),
         showline=True,
         showticklabels=True,
         linewidth=2,
@@ -83,8 +84,6 @@ layout_individual_graph = go.Layout(
         ticklen=5,
         tickfont=dict(
             family='Raleway',
-            size=12,
-            color='rgb(82, 82, 82)',
         ),
         zeroline=False,
         gridcolor="white",
@@ -96,28 +95,22 @@ layout_histogram = go.Layout(
     bargap=0.1,
     bargroupgap=0,
     barmode='group',
-    margin=Margin(l=10, r=00, t=0, b=30),
+    margin=Margin(l=10, r=0, t=0, b=30),
     showlegend=False,
     plot_bgcolor="#D9E0EC",
-    #plot_bgcolor='#323130',
-    #paper_bgcolor='rgb(66, 134, 244, 0)',
     height=250,
     dragmode="select",
     xaxis=dict(
         range=[-0.5, 23.5],
         tickfont=dict(
             family='Raleway',
-            #size=12,
-            #color='rgb(82, 82, 82)',
         ),
         showgrid=True,
-        #gridcolor="white",
         nticks=25,
         fixedrange=True,
         ticksuffix=":00"
     ),
     yaxis=dict(
-        #range=[0, max(yVal)+max(yVal)/4],
         showticklabels=False,
         showgrid=False,
         fixedrange=True,
@@ -127,9 +120,8 @@ layout_histogram = go.Layout(
 )
 
 
-
 app.layout = html.Div([
-    html.A(['Home'], className="button", href="#", style=dict(position="relative", top=-2, left='75%')),
+    html.A(['Home'], className="button", href="#", style=dict(position="relative", top=-2, left='80%')),
     html.Br([]),
     html.Br([]),
     html.Br([]),
@@ -183,11 +175,11 @@ app.layout = html.Div([
                     dcc.RadioItems(
                         id='option-selector',
                         options=[
-                            {'label': 'Cellular Raw Data ', 'value': 'r'},
-                            {'label': 'Preprocessed Trajectory ', 'value': 'p'}, #<>
-                            {'label': 'Mode Detection ', 'value': 'm'}, #<>
+                            {'label': 'Cellular Raw Data ', 'value': 'cellular'},
+                            {'label': 'Preprocessed Trajectory ', 'value': 'prepro'}, #<>
+                            {'label': 'Mode Detection ', 'value': 'result'}, #<>
                         ],
-                        value='r',
+                        value='cellular',
                         labelStyle={'display': 'inline-block'},
                     ),
                 ]),
@@ -269,9 +261,9 @@ def initialize():
     # demo users
     uid = ['u_466924201064380', 'u_-35363411', 'u_-102396725']
     # cellular raw data
-    cellular = {}
+    cellular_dfs = {}
     for u in uid:
-        cellular[u] = {}
+        cellular_dfs[u] = {}
         files_list = os.listdir(os.path.join('data', u, 'cellular'))
         for f in files_list:
             df = pd.read_csv(os.path.join('data', u, 'cellular', f), header=None, sep='|',
@@ -284,8 +276,36 @@ def initialize():
             df.drop('imsi', 1, inplace=True)
             df.drop('timestamp', 1, inplace=True)
             df.drop('unix_t', 1, inplace=True)
-            cellular[u][f] = df
-    return cellular
+            cellular_dfs[u][f] = df
+    # preprocessed data
+    prepro_dfs = {}
+    for u in uid:
+        prepro_dfs[u] = {}
+        files_list = os.listdir(os.path.join('data', u, 'prepro'))
+        for f in files_list:
+            df = pd.read_csv(os.path.join('data', u, 'prepro', f), dtype={'uid':str,'lon':str,'lat':str})
+            date = f[:8]
+            df['Date/Time'] = df.start_t.apply(lambda x: date + " " + x)
+            df['Date/Time'] = pd.to_datetime(df['Date/Time'], format="%Y%m%d %H:%M:%S")
+            df['Location'] = df['lon'].astype(str) + ',' + df['lat'].astype(str)
+            df.index = df['Date/Time']
+            df.drop('uid', 1, inplace=True)
+            df.drop('start_unix_t', 1, inplace=True)
+            df.drop('end_unix_t', 1, inplace=True)
+            prepro_dfs[u][date] = df
+
+    # mode detection data
+    uid = ['u_466924201064380']
+    result_dfs = {}
+    for u in uid:
+        result_dfs[u] = {}
+        df = pd.read_csv(os.path.join('data', u, 'result.csv'), dtype={'uid':str, 'date':str})
+        df['Date/Time'] = pd.to_datetime(df.start_t, format="%Y%m%d %H:%M:%S")
+        df.index = df['Date/Time']
+        for ddf in df.groupby(by='date'):
+            result_dfs[u][ddf[0]] = ddf[1]
+    return cellular_dfs, prepro_dfs, result_dfs
+
 
 # Create callbacks
 
@@ -377,9 +397,12 @@ def get_selection(uid, date, option, selection):
             colorVal[i] = ('lightslategray')
             #colorVal[i] = ('#FFFFFF')
         xVal.append(i)
-        if option == 'r':
-            yVal.append(sum(cellular[uid][date].index.hour == i))
-
+        if option == 'cellular':
+            yVal.append(sum(cellular_dfs[uid][date].index.hour == i))
+        elif option == 'prepro':
+            yVal.append(sum(prepro_dfs[uid][date].index.hour == i))
+        elif option == 'result':
+            yVal.append(sum(result_dfs[uid][date].index.hour == i))
     return [np.array(xVal), np.array(yVal), np.array(xSelected), np.array(colorVal)]
 
 
@@ -406,7 +429,6 @@ def update_histogram(uid, date, option, selection):
                 hoverinfo="none",
                 mode='markers',
                 marker=Marker(
-                    #color='rgb(66, 134, 244, 0)',
                     symbol="square",
                     size=40
                 ),
@@ -414,7 +436,7 @@ def update_histogram(uid, date, option, selection):
             )
     ])
 
-    layout_histogram['yaxis']['range'] = [0, max(yVal)+max(yVal)/4]
+    layout_histogram['yaxis']['range'] = [0, max(yVal)*1.6]
     layout_histogram['annotations'] = [dict(x=xi, y=yi,
                                              text=str(yi),
                                              xanchor='center',
@@ -422,7 +444,6 @@ def update_histogram(uid, date, option, selection):
                                              showarrow=False,
                                              font=dict(
                                                 family="Raleway",
-                                                #color="white"
                                              ),
                                         ) for xi, yi in zip(xVal, yVal)]
 
@@ -433,22 +454,36 @@ def update_histogram(uid, date, option, selection):
 
 
 def get_lon_lat(uid, date, option, selectedData):
-    listStr = "cellular[uid][date]"
+    listStr = option+"_dfs[uid][date]"
     if(selectedData is None or len(selectedData) is 0):
         return listStr
     elif(int(selectedData[len(selectedData)-1])-int(selectedData[0])+2 == len(selectedData)+1 and len(selectedData) > 2):
-        listStr += "[(cellular[uid][date].index.hour>="+str(int(selectedData[0]))+") & \
-                    (cellular[uid][date].index.hour<=" + str(int(selectedData[len(selectedData)-1]))+")]"
+        listStr += "[("+option+"_dfs[uid][date].index.hour>="+str(int(selectedData[0]))+") & \
+                    ("+option+"_dfs[uid][date].index.hour<=" + str(int(selectedData[len(selectedData)-1]))+")]"
     else:
         listStr += "["
         for point in selectedData:
             if (selectedData.index(point) is not len(selectedData)-1):
-                listStr += "(cellular[uid][date].index.hour==" + str(int(point)) + ") | "
+                listStr += "("+option+"_dfs[uid][date].index.hour==" + str(int(point)) + ") | "
             else:
-                listStr += "(cellular[uid][date].index.hour==" + str(int(point)) + ")]"
-
+                listStr += "("+option+"_dfs[uid][date].index.hour==" + str(int(point)) + ")]"
     return listStr
 
+
+def fetch_cellular_data_of_trip(df, uid, date):
+    ntrips = df.shape[0]
+    trip_dfs = []
+    trip_mode = []
+    for i in range(ntrips):
+        trip_start_t = df.iloc[i]['start_t']
+        trip_end_t = df.iloc[i]['end_t']
+        cellular_df = cellular_dfs[uid][date]
+        trip_df = cellular_df[(cellular_df.index >= pd.to_datetime(trip_start_t))&(cellular_df.index <= pd.to_datetime(trip_end_t))]
+        trip_df = trip_df.sort_values(by='Date/Time')
+        trip_dfs.append(trip_df)
+        trip_mode.append(df.iloc[i]['mode'])
+
+    return trip_dfs, trip_mode
 
 
 # update main-graph
@@ -462,7 +497,7 @@ def get_lon_lat(uid, date, option, selectedData):
 def update_main_graph(uid, date, option, selectedData, prevLayout, lockControls):
     listStr = get_lon_lat(uid, date, option, selectedData)
     df = eval(listStr)
-    if option == 'r':
+    if option == 'cellular':
         occurence = np.array([len(p[1]) for p in df.groupby(df.Location)])
         total_occurence = sum(occurence)
         text = [str(j) + ' / ' + str(total_occurence) for j in occurence]
@@ -487,27 +522,66 @@ def update_main_graph(uid, date, option, selectedData, prevLayout, lockControls)
                 customdata=[p[1].index.hour for p in df.groupby(df.Location)],
                 mode='markers',
                 marker=dict(
-                    #size=np.log2(occurence)*200,
                     size=occurence*20,
                     sizemode='area',
                     opacity=0.8,
-                    #color=occurence,
                     color='tomato',
-                    #colorscale=[[0, 'aquamarine'],[0.3, '#7AC4C2'],[0.7, '#F1A1AD'],[1, 'tomato']],
-                    #reversescale=True,
-                    #colorbar=dict(
-                    #    thickness=6,
-                    #    title="Occurence",
-                    #    x=0.935,
-                    #    xpad=0,
-                    #    nticks=10,
-                    #    ),
                 ),
                 hoverinfo="lon+lat+text",
                 #name="Cellular Raw Data"
             ),
         ])
         layout['showlegend'] = False
+    elif option == 'prepro':
+        hour_stay_t = {}
+        for p in df.groupby(df.Location):
+            hour_stay_t[p[0]] = {}
+            for h in p[1].groupby(p[1].index.hour):
+                hour_stay_t[p[0]][h[0]] = sum(h[1].stay_t)
+        data = Data([
+            Scattermapbox(
+                lat= [df.lat.loc[i] for i in df.index],
+                lon= [df.lon.loc[i] for i in df.index],
+                text=[df.start_t.loc[i]+' - '+df.end_t.loc[i]+'<br>Stayed '+str(df.stay_t.loc[i])+'s' for i in df.index],
+                customdata=[hour_stay_t[i] for i in df.Location],
+                mode='markers+lines',
+                marker=Marker(
+                    color="dimgray",
+                    size=10,
+                ),
+                hoverinfo = "text",
+                name = "Cellular Trajectory"
+            )
+        ])
+        #layout['mapbox']['center']['lon'] = np.mean([float(df.lon.loc[i]) for i in df.index])
+        #layout['mapbox']['center']['lat'] = np.mean([float(df.lat.loc[i]) for i in df.index])
+        layout['showlegend'] = True
+    elif option == 'result':
+        trip_dfs, trip_mode = fetch_cellular_data_of_trip(df, uid, date)
+        colors = {"hsr": "rgb(0,116,217)", "mrt": "rgb(255,65,54)", "bus": "rgb(133,20,75)", "train": "rgb(255,133,27)"}
+        names = {"hsr": "HSR trip", "mrt": "MRT trip", "bus": "BUS trip", "train": "TRA trip"}
+        endpt_size = 25
+        trips = []
+        for k in range(len(trip_dfs)):
+            trip_df = trip_dfs[k]
+            labels = [i.strftime("%H:%M:%S") for i in trip_df.index]
+            labels[0] = df.iloc[k].s_id+' : '+df.iloc[k].s_name+'<br>'+labels[0]
+            labels[-1]= df.iloc[k].e_id+' : '+df.iloc[k].e_name+'<br>'+labels[-1]
+            trip = Scattermapbox(
+                lat = [trip_df.lat.loc[i] for i in trip_df.index],
+                lon = [trip_df.lon.loc[i] for i in trip_df.index],
+                text= labels,
+                mode= 'markers+lines',
+                marker=Marker(
+                    size=[endpt_size] + [10 for j in range(len(trip_df.index) - 2)] + [endpt_size],
+                    color=colors[trip_mode[k]]
+                ),
+                name = names[trip_mode[k]]+': '+df.iloc[k].s_name+' --> ' + df.iloc[k].e_name,
+                hoverinfo = "text",
+            )
+            trips.append(trip)
+        data = Data(trips)
+        layout['showlegend'] = True
 
     if (prevLayout is not None and lockControls is not None and
         'lock' in lockControls):
@@ -519,24 +593,28 @@ def update_main_graph(uid, date, option, selectedData, prevLayout, lockControls)
     return fig
 
 
-
-def fetch_individual(chosen):
+def fetch_individual(chosen, option):
     xVal = []
     yVal = []
     for i in range(0, 24):
         xVal.append(i)
-        yVal.append(sum([int(j) == i for j in chosen]))
+        if option == 'cellular':
+            yVal.append(sum([int(j) == i for j in chosen]))
+        elif option == 'prepro':
+            yVal.append(sum([v for k, v in chosen.items() if int(k) == i])/60) # minutes
     return [np.array(xVal), np.array(yVal)]
 
 
 # main-graph -> individual-graph
 @app.callback(Output('individual-graph', 'figure'),
-              [Input('main-graph', 'hoverData')])
-def update_individual_graph(hoverData):
+              [Input('main-graph', 'hoverData'),
+              Input("option-selector", "value")])
+def update_individual_graph(hoverData, option):
     if hoverData is None:
         hoverData = {'points': [{'customdata': []}]}
     chosen = [point['customdata'] for point in hoverData['points']]
-    [xVal, yVal] = fetch_individual(chosen[0])
+    print(chosen[0])
+    [xVal, yVal] = fetch_individual(chosen[0], option)
 
     data = Data([
          go.Scatter(
@@ -552,6 +630,10 @@ def update_individual_graph(hoverData):
          ),
      ])
     layout_individual_graph['yaxis']['range'] = [0, max(yVal)*1.5]
+    if option == 'cellular':
+        layout_individual_graph['yaxis']['title'] = 'Occurence'
+    elif option == 'prepro':
+        layout_individual_graph['yaxis']['title'] = 'Stay time (min)'
 
     figure = go.Figure(data=data, layout=layout_individual_graph)
     return figure
@@ -577,8 +659,8 @@ for css in external_css:
 
 @app.server.before_first_request
 def loadData():
-    global cellular
-    cellular = initialize()
+    global cellular_dfs, prepro_dfs, result_dfs
+    cellular_dfs, prepro_dfs, result_dfs = initialize()
 
 if __name__ == '__main__':
-	app.server.run(host='127.0.0.1',port=8050,debug=True)
+    app.run_server(debug=True) #localhost
