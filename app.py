@@ -149,8 +149,7 @@ app.layout = html.Div([
                         id='user-dropdown',
                         options=[
                             {'label': 'WC Peng :)', 'value': 'u_466924201064380'},
-                            {'label': 'u_-35363411', 'value': 'u_-35363411'},
-                            {'label': 'u_-102396725', 'value': 'u_-102396725'}, #MRT
+                            {'label': 'u_-102396725', 'value': 'u_-102396725'},
                         ],
                         value="u_466924201064380",
                         placeholder="Choose an user",
@@ -259,7 +258,7 @@ app.layout = html.Div([
 
 def initialize():
     # demo users
-    uid = ['u_466924201064380', 'u_-35363411', 'u_-102396725']
+    uid = ['u_466924201064380', 'u_-102396725']
     # cellular raw data
     cellular_dfs = {}
     for u in uid:
@@ -295,7 +294,7 @@ def initialize():
             prepro_dfs[u][date] = df
 
     # mode detection data
-    uid = ['u_466924201064380']
+    #uid = ['u_466924201064380']
     result_dfs = {}
     for u in uid:
         result_dfs[u] = {}
@@ -362,9 +361,13 @@ def update_time_selector(value):
               Input("date-dropdown", "value"),
               Input("option-selector", "value")])
 def clear_histogram_selection(value1, value2, value3):
-    #if(value is None or len(value) is 0):
-    #    return None
-    pass
+    if(value1 is None or len(value1) is 0):
+        return None
+    elif(value2 is None or len(value2) is 0):
+        return None
+    elif(value3 is None or len(value3) is 0):
+        return None
+
 
 # histogram prompt
 @app.callback(Output("popupAnnotation", "children"),
@@ -540,8 +543,8 @@ def update_main_graph(uid, date, option, selectedData, prevLayout, lockControls)
                 hour_stay_t[p[0]][h[0]] = sum(h[1].stay_t)
         data = Data([
             Scattermapbox(
-                lat= [df.lat.loc[i] for i in df.index],
-                lon= [df.lon.loc[i] for i in df.index],
+                lat= df.lat,
+                lon= df.lon,
                 text=[df.start_t.loc[i]+' - '+df.end_t.loc[i]+'<br>Stayed '+str(df.stay_t.loc[i])+'s' for i in df.index],
                 customdata=[hour_stay_t[i] for i in df.Location],
                 mode='markers+lines',
@@ -568,8 +571,8 @@ def update_main_graph(uid, date, option, selectedData, prevLayout, lockControls)
             labels[0] = df.iloc[k].s_id+' : '+df.iloc[k].s_name+'<br>'+labels[0]
             labels[-1]= df.iloc[k].e_id+' : '+df.iloc[k].e_name+'<br>'+labels[-1]
             trip = Scattermapbox(
-                lat = [trip_df.lat.loc[i] for i in trip_df.index],
-                lon = [trip_df.lon.loc[i] for i in trip_df.index],
+                lat = trip_df.lat,
+                lon = trip_df.lon,
                 text= labels,
                 mode= 'markers+lines',
                 marker=Marker(
