@@ -1,3 +1,4 @@
+#! -*- coding:utf-8 -*-
 import dash
 from dash.dependencies import Input, Output, State
 import dash_core_components as dcc
@@ -16,7 +17,7 @@ from flask import Flask
 server = Flask('my app')
 server.secret_key = os.environ.get('secret_key', 'secret')
 
-app = dash.Dash('cht2017-demo', server=server, url_base_pathname='/cht2017-demo/', csrf_protect=False)
+app = dash.Dash('cht2017-demo', server=server, url_base_pathname='/tjminer/user/', csrf_protect=False)
 
 mapbox_access_token = 'pk.eyJ1IjoiYWlrb2Nob3UiLCJhIjoiY2o1bWF2emI4M2ZoYjJxbnFmbXFrdHQ0ZCJ9.w0_1-IC0JCPukFL7Bpa92w'
 
@@ -39,7 +40,7 @@ layout = dict(
                 ),
                 pitch=0,
                 zoom=8,
-                style='streets'
+                style='basic'
             ),
             font=dict(
                 family='Raleway',
@@ -120,21 +121,39 @@ layout_histogram = go.Layout(
 )
 
 
+header = html.Div(
+    className='header',
+    children=html.Div(
+        className='container-width',
+        style={'height': '100%'},
+        children=[
+            html.Div(className="links", children=[
+                html.A('Home', className="link", href="#"),
+                html.A('User mode', className="link active", href="#"),
+                html.A('MRT', className="link", href="#"),
+                html.A('Bus', className="link", href="#"),
+                html.A('HSR', className="link", href="#"),
+                html.A('Train', className="link", href="#"),
+            ])
+        ]
+    )
+)
+
+
 app.layout = html.Div([
-    html.A(['Home'], className="button", href="#", style=dict(position="relative", top=-2, left='80%')),
-    html.Br([]),
-    html.Br([]),
-    html.Br([]),
+    header,
     html.Div([
         # Row 1: Header and Intro text
         html.Div([
             html.Div([
-                html.H4('Transportation Mode Detection'),
-                html.H6('Public transportation mode detection with cellular data. Select different users and days using the dropdowns below', style=dict(color='#7F90AC')),
+                html.H4('Transportation Mode Detection || User Mode', style=dict(color='white', fontFamily='Raleway')),
+                html.H6('Public transportation mode detection with cellular data. Select different users and days using the dropdowns below', style=dict(color='#7F90AC', fontFamily='Raleway')),
                 ], className = "nine columns padded"),
             html.Div([
-                html.H1([html.Span('TJ', style=dict(opacity=0.5)), html.Span('Miner')],),
-                html.H6('NCTU-ADSLab'),
+                html.H1([
+                    html.Span('TJ', style=dict(opacity=0.7, color='#AE8A8A', fontFamily='Raleway')),
+                    html.Span('Miner', style=dict(color='white', fontFamily='Raleway')),]),
+                html.H6('NCTU-ADSLab', style=dict(opacity=0.7, color='white',     fontFamily='Raleway')),
                 ], className="three columns gs-header gs-accent-header padded", style=dict(float='right')),
             ], className="row gs-header gs-text-header"),
         html.Br([]),
@@ -148,10 +167,12 @@ app.layout = html.Div([
                     dcc.Dropdown(
                         id='user-dropdown',
                         options=[
-                            {'label': 'WC Peng :)', 'value': 'u_466924201064380'},
-                            {'label': 'u_-102396725', 'value': 'u_-102396725'},
+                            {'label': 'Prof. Peng', 'value': 'u_466924201064380'},
+                            {'label': 'Demo user 2', 'value': 'u_-102396725'},
+                            {'label': 'Universiade foreigne players (coreview)', 'value': 'coreview'},
+                            {'label': 'Universiade foreigne players (signal)', 'value': 'signal'},
                         ],
-                        value="u_466924201064380",
+                        value="signal",
                         placeholder="Choose an user",
                     ),
                 ]),
@@ -258,7 +279,7 @@ app.layout = html.Div([
 
 def initialize():
     # demo users
-    uid = ['u_466924201064380', 'u_-102396725']
+    uid = ['u_466924201064380', 'u_-102396725', 'coreview', 'signal']
     # cellular raw data
     cellular_dfs = {}
     for u in uid:
@@ -276,6 +297,7 @@ def initialize():
             df.drop('timestamp', 1, inplace=True)
             df.drop('unix_t', 1, inplace=True)
             cellular_dfs[u][f] = df
+    uid = ['u_466924201064380', 'u_-102396725']
     # preprocessed data
     prepro_dfs = {}
     for u in uid:
@@ -294,7 +316,6 @@ def initialize():
             prepro_dfs[u][date] = df
 
     # mode detection data
-    #uid = ['u_466924201064380']
     result_dfs = {}
     for u in uid:
         result_dfs[u] = {}
@@ -326,13 +347,24 @@ def set_date_options(uid):
             {'label': '2017-03-17', 'value': '20170317'},
             {'label': '2017-05-12', 'value': '20170512'},
         ]
-    else:
+    elif uid == 'u_-102396725':
         options=[
             {'label': '2017-01-03', 'value': '20170103'},
             {'label': '2017-01-04', 'value': '20170104'},
             {'label': '2017-01-05', 'value': '20170105'},
             {'label': '2017-01-06', 'value': '20170106'},
         ]
+    elif uid == 'coreview' or uid == 'signal':
+        options=[
+            {'label': '2017-08-19', 'value': '20170819'},
+            {'label': '2017-08-20', 'value': '20170820'},
+            {'label': '2017-08-21', 'value': '20170821'},
+            {'label': '2017-08-22', 'value': '20170822'},
+            {'label': '2017-08-23', 'value': '20170823'},
+            {'label': '2017-08-24', 'value': '20170824'},
+            {'label': '2017-08-25', 'value': '20170825'},
+        ]
+
     return options
 
 @app.callback(Output("date-dropdown", "value"),
@@ -340,8 +372,10 @@ def set_date_options(uid):
 def set_date_value(uid):
     if uid == 'u_466924201064380':
         value = '20161123'
-    else:
+    elif uid == 'u_-102396725':
         value = '20170103'
+    elif uid == 'coreview' or uid == 'signal':
+        value = '20170819'
     return value
 
 # histogram -> time-selector
@@ -500,6 +534,8 @@ def fetch_cellular_data_of_trip(df, uid, date):
 def update_main_graph(uid, date, option, selectedData, prevLayout, lockControls):
     listStr = get_lon_lat(uid, date, option, selectedData)
     df = eval(listStr)
+    scale_outer = {'coreview': 0.35, 'signal': 6, 'u_466924201064380':21, 'u_-102396725': 21}
+    scale_inner = {'coreview': 0.3, 'signal': 5, 'u_466924201064380':20, 'u_-102396725': 20}
     if option == 'cellular':
         occurence = np.array([len(p[1]) for p in df.groupby(df.Location)])
         total_occurence = sum(occurence)
@@ -510,8 +546,9 @@ def update_main_graph(uid, date, option, selectedData, prevLayout, lockControls)
                 lat=[p[0].split(',')[1] for p in df.groupby(df.Location)],
                 mode='markers',
                 marker=dict(
-                    #size=np.log2(occurence)*220,
-                    size=occurence*21,
+                    #size=np.log(occurence),
+                    size=occurence*scale_outer[uid],
+                    #sizemode='diameter',
                     sizemode='area',
                     opacity=0.3,
                     color='black',
@@ -525,7 +562,7 @@ def update_main_graph(uid, date, option, selectedData, prevLayout, lockControls)
                 customdata=[p[1].index.hour for p in df.groupby(df.Location)],
                 mode='markers',
                 marker=dict(
-                    size=occurence*20,
+                    size=occurence*scale_inner[uid],
                     sizemode='area',
                     opacity=0.8,
                     color='tomato',
@@ -648,7 +685,10 @@ if 'DYNO' in os.environ:
         'external_url': 'https://cdn.rawgit.com/chriddyp/ca0d8f02a1659981a0ea7f013a378bbd/raw/e79f3f789517deec58f41251f7dbb6bee72c44ab/plotly_ga.js'
     })
 
-external_css = ["https://cdnjs.cloudflare.com/ajax/libs/skeleton/2.0.4/skeleton.min.css",
+external_css = [
+                'https://cdn.rawgit.com/plotly/dash-app-stylesheets/8485c028c19c393e9ab85e1a4fafd78c489609c2/dash-docs-base.css',
+                'https://cdn.rawgit.com/plotly/dash-app-stylesheets/30b641e2e89753b13e6557b9d65649f13ea7c64c/dash-docs-custom.css',
+                "https://cdnjs.cloudflare.com/ajax/libs/skeleton/2.0.4/skeleton.min.css",
                 "//fonts.googleapis.com/css?family=Raleway:400,300,600",
                 "//fonts.googleapis.com/css?family=Dosis:Medium",
                 #"https://cdn.rawgit.com/AikoChou/cht2017-demo/ver2/static/css/hush.css",
